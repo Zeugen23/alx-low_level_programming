@@ -1,20 +1,23 @@
 #include "main.h"
 
 /**
- * more_numbers - asdas asd asd sad
+ * print_line - draws a straight line in the terminal
+ * @n: number of times the character _ should be printed
  */
-void more_numbers(void)
+void print_line(int n)
 {
-	int i, j;
-
-	for (i = 0; i< 10; i++)
+	if (n <= 0)
 	{
-		for (j = 0; j < 15; j++)
+		_putchar('\n');
+	} else
+	{
+		int i;
+
+		for (i = 1; i <= n; i++)
 		{
-			if (j >= 10)
-				_putchar(j / 10 + '0');
-			_putchar(j % 10 + '0');
+			_putchar('_');
 		}
 		_putchar('\n');
 	}
+
 }
