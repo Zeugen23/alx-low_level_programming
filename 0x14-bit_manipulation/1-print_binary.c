@@ -8,14 +8,14 @@
  *
  * Return: value of (base ^ power)
  */
-   unsigned long int _pow(unsigned int base, unsigned int power)
+unsigned long int _pow(unsigned int base, unsigned int power)
 {
 	unsigned long int num;
 	unsigned int a;
 
 	num = 1;
-	for (a = 1; a <= power; ++a)
-		num *= base;
+	for (a = 1; a <= power; a++)
+		num = num * base;
 	return (num);
 }
 
@@ -35,7 +35,7 @@ void print_binary(unsigned long int n)
 	while (divisor != 0)
 	{
 		check = n & divisor;
-		if (divisor == check)
+		if (!(check ^ divisor))
 		{
 			flag = 1;
 			_putchar('1');
@@ -47,6 +47,4 @@ void print_binary(unsigned long int n)
 		divisor /= 2;
 	}
 }
-
-
 
