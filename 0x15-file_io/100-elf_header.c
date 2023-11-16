@@ -1,3 +1,8 @@
+/*
+ * File: 100-elf_header.c
+ * Auth: Brennan D Baraban
+ */
+
 #include <elf.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -21,7 +26,7 @@ void close_elf(int elf);
  * check_elf - Checks if a file is an ELF file.
  * @e_ident: A pointer to an array containing the ELF magic numbers.
  *
- * Description: If the file is not an ELF file, exit code 98 is returned.
+ * Description: If the file is not an ELF file - exit code 98.
  */
 void check_elf(unsigned char *e_ident)
 {
@@ -117,7 +122,8 @@ void print_data(unsigned char *e_ident)
  */
 void print_version(unsigned char *e_ident)
 {
-	printf("  Version:                           %d", e_ident[EI_VERSION]);
+	printf("  Version:                           %d",
+	       e_ident[EI_VERSION]);
 
 	switch (e_ident[EI_VERSION])
 	{
@@ -169,7 +175,7 @@ void print_osabi(unsigned char *e_ident)
 		break;
 	case ELFOSABI_STANDALONE:
 		printf("Standalone App\n");
-	break;
+		break;
 	default:
 		printf("<unknown: %x>\n", e_ident[EI_OSABI]);
 	}
@@ -177,20 +183,24 @@ void print_osabi(unsigned char *e_ident)
 
 /**
  * print_abi - Prints the ABI version of an ELF header.
- * @e_ident: A pointer to an array containing the ELF version.
+ * @e_ident: A pointer to an array containing the ELF ABI version.
  */
 void print_abi(unsigned char *e_ident)
 {
-	printf("  ABI Version:                       %d\n", e_ident[EI_ABIVERSION]);
+	printf("  ABI Version:                       %d\n",
+	       e_ident[EI_ABIVERSION]);
 }
 
 /**
  * print_type - Prints the type of an ELF header.
- * @e_type: The type of the ELF file.
- * @e_ident: A pointer to an array containing the ELF version.
+ * @e_type: The ELF type.
+ * @e_ident: A pointer to an array containing the ELF class.
  */
 void print_type(unsigned int e_type, unsigned char *e_ident)
 {
+	if (e_ident[EI_DATA] == ELFDATA2MSB)
+		e_type >>= 8;
+
 	printf("  Type:                              ");
 
 	switch (e_type)
@@ -216,111 +226,94 @@ void print_type(unsigned int e_type, unsigned char *e_ident)
 }
 
 /**
- * print_entry - Prints the entry point address of an ELF header.
- * @e_entry: The entry point address of the ELF file.
- * @e_ident: A pointer to an array containing the ELF version.
+ * print_entry - Prints the entry point of an ELF header.
+ * @e_entry: The address of the ELF entry point.
+ * @e_ident: A pointer to an array containing the ELF class.
  */
 void print_entry(unsigned long int e_entry, unsigned char *e_ident)
 {
 	printf("  Entry point address:               ");
 
+	if (e_ident[EI_DATA] == ELFDATA2MSB)
+	{
+		e_entry = ((e_entry << 8) & 0xFF00FF00) |
+			  ((e_entry >> 8) & 0xFF00FF);
+		e_entry = (e_entry << 16) | (e_entry >> 16);
+	}
+
 	if (e_ident[EI_CLASS] == ELFCLASS32)
-		printf("0x%x\n", (unsigned int)e_entry);
-	else if (e_ident[EI_CLASS] == ELFCLASS64)
-		printf("0x%lx\n", e_entry);
+		printf("%#x\n", (unsigned int)e_entry);
+
 	else
-		printf("<unknown>\n");
+		printf("%#lx\n", e_entry);
 }
 
 /**
- * close_elf - Closes the ELF file descriptor.
+ * close_elf - Closes an ELF file.
  * @elf: The file descriptor of the ELF file.
+ *
+ * Description: If the file cannot be closed - exit code 98.
  */
 void close_elf(int elf)
 {
 	if (close(elf) == -1)
 	{
-		dprintf(STDERR_FILENO, "Error: Could not close ELF file descriptor\n");
+		dprintf(STDERR_FILENO,
+			"Error: Can't close fd %d\n", elf);
 		exit(98);
 	}
 }
 
 /**
- * main - Entry point.
- * @argc: The number of arguments.
- * @argv: An array of pointers to strings containing the arguments.
+ * main - Displays the information contained in the
+ *        ELF header at the start of an ELF file.
+ * @argc: The number of arguments supplied to the program.
+ * @argv: An array of pointers to the arguments.
  *
- * Return: Always 0.
+ * Return: 0 on success.
+ *
+ * Description: If the file is not an ELF File or
+ *              the function fails - exit code 98.
  */
-int main(int argc, char *argv[])
+int main(int __attribute__((__unused__)) argc, char *argv[])
 {
-	int elf;
-	unsigned char e_ident[EI_NIDENT];
-	ssize_t bytes_read;
+	Elf64_Ehdr *header;
+	int o, r;
 
-	if (argc != 2)
+	o = open(argv[1], O_RDONLY);
+	if (o == -1)
 	{
-		dprintf(STDERR_FILENO, "Usage: %s <ELF file>\n", argv[0]);
-		exit(97);
+		dprintf(STDERR_FILENO, "Error: Can't read file %s\n", argv[1]);
+		exit(98);
 	}
-
-	elf = open(argv[1], O_RDONLY);
-	if (elf == -1)
+	header = malloc(sizeof(Elf64_Ehdr));
+	if (header == NULL)
 	{
-		dprintf(STDERR_FILENO, "Error: Cannot open file %s\n", argv[1]);
+		close_elf(o);
+		dprintf(STDERR_FILENO, "Error: Can't read file %s\n", argv[1]);
+		exit(98);
+	}
+	r = read(o, header, sizeof(Elf64_Ehdr));
+	if (r == -1)
+	{
+		free(header);
+		close_elf(o);
+		dprintf(STDERR_FILENO, "Error: `%s`: No such file\n", argv[1]);
 		exit(98);
 	}
 
-	bytes_read = read(elf, e_ident, EI_NIDENT);
-	if (bytes_read == -1)
-	{
-		dprintf(STDERR_FILENO, "Error: Cannot read from file %s\n", argv[1]);
-		close_elf(elf);
-		exit(98);
-	}
+	check_elf(header->e_ident);
+	printf("ELF Header:\n");
+	print_magic(header->e_ident);
+	print_class(header->e_ident);
+	print_data(header->e_ident);
+	print_version(header->e_ident);
+	print_osabi(header->e_ident);
+	print_abi(header->e_ident);
+	print_type(header->e_type, header->e_ident);
+	print_entry(header->e_entry, header->e_ident);
 
-	check_elf(e_ident);
-	print_magic(e_ident);
-	print_class(e_ident);
-	print_data(e_ident);
-	print_version(e_ident);
-	print_osabi(e_ident);
-	print_abi(e_ident);
-
-	if (lseek(elf, EI_NIDENT + 12, SEEK_SET) == -1)
-	{
-		dprintf(STDERR_FILENO, "Error: Cannot seek to type in file %s\n", argv[1]);
-		close_elf(elf);
-		exit(98);
-	}
-
-	bytes_read = read(elf, &e_ident[EI_VERSION], sizeof(unsigned int));
-	if (bytes_read == -1)
-	{
-		dprintf(STDERR_FILENO, "Error: Cannot read type in file %s\n", argv[1]);
-		close_elf(elf);
-		exit(98);
-	}
-
-	print_type(*(unsigned int *)& e_ident[EI_VERSION], e_ident);
-
-	if (lseek(elf, EI_NIDENT + 16, SEEK_SET) == -1)
-	{
-		dprintf(STDERR_FILENO, "Error: Cannot seek to entry point in file %s\n", argv[1]);
-		close_elf(elf);
-		exit(98);
-	}
-
-	bytes_read = read(elf, &e_ident[EI_VERSION], sizeof(unsigned long int));
-	if (bytes_read == -1)
-	{
-		dprintf(STDERR_FILENO, "Error: Cannot read entry point in file %s\n", argv[1]);
-		close_elf(elf);
-		exit(98);
-	}
-
-	print_entry(*(unsigned long int *)&e_ident[EI_VERSION], e_ident);
-
-	close_elf(elf);
+	free(header);
+	close_elf(o);
 	return (0);
 }
