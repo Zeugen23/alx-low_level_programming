@@ -1,6 +1,4 @@
 #include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 #include "lists.h"
 
 /**
@@ -12,9 +10,9 @@
 int sum_listint(listint_t *head)
 {
  int sum;
- listint_t *temp;
-temp = head;
-
+ sum = 0;
+  listint_t *temp = head;
+ 
  while (temp)
  {
  sum += temp->n;
