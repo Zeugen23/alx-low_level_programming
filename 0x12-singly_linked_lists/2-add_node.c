@@ -3,30 +3,28 @@
 #include "lists.h"
 
 /**
- wq
- * add_node- a new node should be added at the beginning of a linked list
- * @head: head of a list_t list
- * @str: nen value to add in the node
+ * add_node - Adds a new node at the beginning of a linked list.
+ * @head: Pointer to the head of a list_t list.
+ * @str: New value to add in the node.
  *
- * Return: the new element, or NULL if it not succesful
+ * Return: The new element, or NULL if it's not successful.
  */
 list_t *add_node(list_t **head, const char *str)
 {
- list_t *new;
- size_t i = 0;
+	list_t *new_node;
+	size_t len = 0;
 
- while (str[i])
- i++;
+	while (str[len])
+		len++;
 
- new = malloc(sizeof(list_t));
- if (!new)
- return (NULL);
+	new_node = malloc(sizeof(list_t));
+	if (!new_node)
+		return (NULL);
 
- new->str = strdup(str);
- new->len = i;
- new->next = (*head);
- (*head) = new;
+	new_node->str = strdup(str);
+	new_node->len = len;
+	new_node->next = *head;
+	*head = new_node;
 
- return (*head);
+	return (*head);
 }
-
